@@ -17,6 +17,8 @@ https://github.com/codegik/pocs
 ```
 
 ## Running
+
+This command will show last commit from yesterday.
 ```shell
 ./team-commits
 ```
