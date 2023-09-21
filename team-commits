@@ -1,0 +1,53 @@
+#!/bin/sh
+
+REPOS_FILE="$HOME/.config/team/repos"
+
+if [[ ! -f "$REPOS_FILE" ]]; then
+  echo "Please add repositories in file $REPOS_FILE"
+  exit 1
+fi
+
+REPOS=()
+IFS=$'\n' read -d '' -r -a REPOS < $REPOS_FILE
+
+if [[ -z "$REPOS" ]]; then
+  echo "Please add repositories in file $REPOS_FILE"
+  exit 1
+fi
+
+TARGET_DIR="$HOME/sources/team-repos"
+TMP_FILE="/tmp/team-commits"
+
+mkdir -p $TARGET_DIR && cd $TARGET_DIR
+
+echo "User repo|Status|Commit url" > $TMP_FILE
+
+for REPO in "${REPOS[@]}"
+do
+  if [[ ! -z "$REPO" ]]; then
+    REPO_DIR=$(echo $REPO |sed 's|https://github.com/||' | cut -d. -f1)
+
+    if [[ -d "$REPO_DIR" ]]; then
+      cd $REPO_DIR
+      git pull --quiet > /dev/null
+    else
+      git clone --quiet $REPO $REPO_DIR > /dev/null
+      cd $REPO_DIR
+    fi
+
+    LAST_COMMIT_ID=$(git log --since=yesterday.midnigh --pretty=format:"%H" HEAD^..HEAD)
+    LAST_COMMIT_URL="$(git config --get remote.origin.url | sed -e 's/\.git$//g')/commit/$LAST_COMMIT_ID"
+
+    CHECKED="OK"
+
+    if [[ -z "$LAST_COMMIT_ID" ]]; then
+      CHECKED="NOT-OK"
+    fi
+
+    echo "$REPO_DIR|$CHECKED|$LAST_COMMIT_URL" >> $TMP_FILE
+  fi
+done
+
+cat $TMP_FILE | column -t -s "|"
+
+exit 0
