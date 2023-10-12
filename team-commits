@@ -35,7 +35,7 @@ do
       cd $REPO_DIR
     fi
 
-    LAST_COMMIT_ID=$(git log --since=yesterday.midnigh --pretty=format:"%H" HEAD^..HEAD)
+    LAST_COMMIT_ID=$(git log --since=yesterday.0:00am --pretty=format:"%H" HEAD^..HEAD)
     LAST_COMMIT_URL="$(git config --get remote.origin.url | sed -e 's/\.git$//g')/commit/$LAST_COMMIT_ID"
 
     CHECKED="OK"
