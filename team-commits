@@ -45,6 +45,7 @@ do
     fi
 
     echo "$REPO_DIR|$CHECKED|$LAST_COMMIT_URL" >> $TMP_FILE
+    cd -
   fi
 done
 
