@@ -1,0 +1,40 @@
+#!/bin/sh
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <github-username> [github-hostname]"
+  exit 1
+fi
+
+USERNAME="$1"
+HOSTNAME="${2:-github.com}"
+GH_HOST_FLAG=""
+
+if [[ "$HOSTNAME" != "github.com" ]]; then
+  GH_HOST_FLAG="--hostname $HOSTNAME"
+fi
+
+NOW=$(date +%Y-%m-%d)
+CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
+PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
+PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
+
+echo "Fetching GitHub stats for user: $USERNAME from $HOSTNAME"
+echo "Current week: $CURRENT_WEEK_START to $NOW"
+echo "Previous week: $PREVIOUS_WEEK_START to $PREVIOUS_WEEK_END"
+echo ""
+
+CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count')
+
+PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count')
+
+CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count')
+
+PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count')
+
+{
+  echo "Metric|Current Week|Previous Week"
+  echo "Commits|$CURRENT_COMMITS|$PREVIOUS_COMMITS"
+  echo "Pull Requests|$CURRENT_PRS|$PREVIOUS_PRS"
+} | column -t -s "|"
+
+exit 0
