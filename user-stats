@@ -13,10 +13,10 @@ if [[ "$HOSTNAME" != "github.com" ]]; then
   GH_HOST_FLAG="--hostname $HOSTNAME"
 fi
 
-CURRENT_WEEK_START=$(date -v-Mon +%Y-%m-%d)
-PREVIOUS_WEEK_START=$(date -v-Mon -v-7d +%Y-%m-%d)
-PREVIOUS_WEEK_END=$(date -j -v-Mon -v-7d -v+6d +%Y-%m-%d)
 NOW=$(date +%Y-%m-%d)
+CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
+PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
+PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
 
 echo "Fetching GitHub stats for user: $USERNAME from $HOSTNAME"
 echo "Current week: $CURRENT_WEEK_START to $NOW"
