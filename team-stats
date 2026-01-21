@@ -6,8 +6,7 @@ if [[ ! -f "$USERS_FILE" ]]; then
   echo "Please add users in file $USERS_FILE"
   echo "Format: DisplayName|username:hostname|username:hostname|..."
   echo "Example:"
-  echo "  Inacio Klassman|iklassman:github.tlcinternal.com|codegik:github.com"
-  echo "  Gabriel Passos|gpassos:github.tlcinternal.com"
+  echo "  Inacio Klassman|inacioklassmann:github.internal.com|codegik:github.com"
   exit 1
 fi
 
@@ -65,7 +64,8 @@ do
 done
 
 echo ""
-echo "Period: Current week ($CURRENT_WEEK_START to $NOW) | Previous week ($PREVIOUS_WEEK_START to $PREVIOUS_WEEK_END)"
+echo "Current week ($CURRENT_WEEK_START to $NOW)"
+echo "Previous week ($PREVIOUS_WEEK_START to $PREVIOUS_WEEK_END)"
 echo ""
 
 cat $TMP_FILE | column -t -s "|"
