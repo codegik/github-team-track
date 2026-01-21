@@ -26,7 +26,7 @@ CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
 PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
 PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
 
-echo "User|GitHub|Current Commits|Current PRs|Previous Commits|Previous PRs" > $TMP_FILE
+echo "User|GitHub|CW-Commits|CW-PRs|PW-Commits|PW-PRs" > $TMP_FILE
 
 for USER_ENTRY in "${USERS[@]}"
 do
