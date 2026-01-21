@@ -1,0 +1,64 @@
+#!/bin/sh
+
+USERS_FILE="$HOME/.config/team/users"
+
+if [[ ! -f "$USERS_FILE" ]]; then
+  echo "Please add users in file $USERS_FILE"
+  echo "Format: username:hostname"
+  echo "Example:"
+  echo "  iklassman:github.tlcinternal.com"
+  echo "  someuser:github.com"
+  exit 1
+fi
+
+USERS=()
+IFS=$'\n' read -d '' -r -a USERS < $USERS_FILE
+
+if [[ -z "$USERS" ]]; then
+  echo "Please add users in file $USERS_FILE"
+  exit 1
+fi
+
+TMP_FILE="/tmp/team-stats"
+
+echo "User|GitHub|Current Commits|Current PRs|Previous Commits|Previous PRs" > $TMP_FILE
+
+NOW=$(date +%Y-%m-%d)
+CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
+PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
+PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
+
+for USER_ENTRY in "${USERS[@]}"
+do
+  if [[ ! -z "$USER_ENTRY" ]]; then
+    USERNAME=$(echo $USER_ENTRY | cut -d: -f1)
+    HOSTNAME=$(echo $USER_ENTRY | cut -d: -f2)
+
+    if [[ -z "$HOSTNAME" ]]; then
+      HOSTNAME="github.com"
+    fi
+
+    GH_HOST_FLAG=""
+    if [[ "$HOSTNAME" != "github.com" ]]; then
+      GH_HOST_FLAG="--hostname $HOSTNAME"
+    fi
+
+    CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+    PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+    CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+    PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+    echo "$USERNAME|$HOSTNAME|$CURRENT_COMMITS|$CURRENT_PRS|$PREVIOUS_COMMITS|$PREVIOUS_PRS" >> $TMP_FILE
+  fi
+done
+
+echo ""
+echo "Period: Current week ($CURRENT_WEEK_START to $NOW) | Previous week ($PREVIOUS_WEEK_START to $PREVIOUS_WEEK_END)"
+echo ""
+
+cat $TMP_FILE | column -t -s "|"
+
+exit 0
