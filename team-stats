@@ -4,10 +4,10 @@ USERS_FILE="$HOME/.config/team/users"
 
 if [[ ! -f "$USERS_FILE" ]]; then
   echo "Please add users in file $USERS_FILE"
-  echo "Format: username:hostname"
+  echo "Format: DisplayName|username:hostname|username:hostname|..."
   echo "Example:"
-  echo "  iklassman:github.tlcinternal.com"
-  echo "  someuser:github.com"
+  echo "  Inacio Klassman|iklassman:github.tlcinternal.com|codegik:github.com"
+  echo "  Gabriel Passos|gpassos:github.tlcinternal.com"
   exit 1
 fi
 
@@ -21,37 +21,53 @@ fi
 
 TMP_FILE="/tmp/team-stats"
 
-echo "User|GitHub|Current Commits|Current PRs|Previous Commits|Previous PRs" > $TMP_FILE
-
 NOW=$(date +%Y-%m-%d)
 CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
 PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
 PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
 
+echo "User|GitHub|Current Commits|Current PRs|Previous Commits|Previous PRs" > $TMP_FILE
+
 for USER_ENTRY in "${USERS[@]}"
 do
   if [[ ! -z "$USER_ENTRY" ]]; then
-    USERNAME=$(echo $USER_ENTRY | cut -d: -f1)
-    HOSTNAME=$(echo $USER_ENTRY | cut -d: -f2)
+    DISPLAY_NAME=$(echo $USER_ENTRY | cut -d'|' -f1)
+    ACCOUNTS=$(echo $USER_ENTRY | cut -d'|' -f2-)
 
-    if [[ -z "$HOSTNAME" ]]; then
-      HOSTNAME="github.com"
-    fi
+    FIRST_ACCOUNT=true
 
-    GH_HOST_FLAG=""
-    if [[ "$HOSTNAME" != "github.com" ]]; then
-      GH_HOST_FLAG="--hostname $HOSTNAME"
-    fi
+    IFS='|' read -ra ACCOUNT_LIST <<< "$ACCOUNTS"
+    for ACCOUNT in "${ACCOUNT_LIST[@]}"
+    do
+      USERNAME=$(echo $ACCOUNT | cut -d: -f1)
+      HOSTNAME=$(echo $ACCOUNT | cut -d: -f2)
 
-    CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+      if [[ -z "$HOSTNAME" ]]; then
+        HOSTNAME="github.com"
+      fi
 
-    PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+      GH_HOST_FLAG=""
+      GITHUB_TYPE="Public"
+      if [[ "$HOSTNAME" != "github.com" ]]; then
+        GH_HOST_FLAG="--hostname $HOSTNAME"
+        GITHUB_TYPE="Enterprise"
+      fi
 
-    CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+      CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
 
-    PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+      PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
 
-    echo "$USERNAME|$HOSTNAME|$CURRENT_COMMITS|$CURRENT_PRS|$PREVIOUS_COMMITS|$PREVIOUS_PRS" >> $TMP_FILE
+      CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+      PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+      if [[ "$FIRST_ACCOUNT" == "true" ]]; then
+        echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$CURRENT_PRS|$PREVIOUS_COMMITS|$PREVIOUS_PRS" >> $TMP_FILE
+        FIRST_ACCOUNT=false
+      else
+        echo "|$GITHUB_TYPE|$CURRENT_COMMITS|$CURRENT_PRS|$PREVIOUS_COMMITS|$PREVIOUS_PRS" >> $TMP_FILE
+      fi
+    done
   fi
 done
 
