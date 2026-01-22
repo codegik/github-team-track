@@ -18,14 +18,40 @@ if [[ -z "$USERS" ]]; then
   exit 1
 fi
 
-TMP_FILE="/tmp/team-stats"
+TMP_DIR="/tmp/team-stats-$$"
+mkdir -p $TMP_DIR
 
 NOW=$(date +%Y-%m-%d)
 CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
 PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
 PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
 
-echo "User|GitHub|CW-Commits|PW-Commits|CW-PRs|PW-PRs" > $TMP_FILE
+fetch_stats() {
+  local DISPLAY_NAME="$1"
+  local USERNAME="$2"
+  local HOSTNAME="$3"
+  local OUTPUT_FILE="$4"
+
+  GH_HOST_FLAG=""
+  GITHUB_TYPE="Public"
+  if [[ "$HOSTNAME" != "github.com" ]]; then
+    GH_HOST_FLAG="--hostname $HOSTNAME"
+    GITHUB_TYPE="Enterprise"
+  fi
+
+  CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+  PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+  CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+  PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+  echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$PREVIOUS_COMMITS|$CURRENT_PRS|$PREVIOUS_PRS" > $OUTPUT_FILE
+}
+
+COUNTER=0
+ACCOUNT_INDEX=0
 
 for USER_ENTRY in "${USERS[@]}"
 do
@@ -43,25 +69,33 @@ do
         HOSTNAME="github.com"
       fi
 
-      GH_HOST_FLAG=""
-      GITHUB_TYPE="Public"
-      if [[ "$HOSTNAME" != "github.com" ]]; then
-        GH_HOST_FLAG="--hostname $HOSTNAME"
-        GITHUB_TYPE="Enterprise"
+      OUTPUT_FILE="$TMP_DIR/result_$ACCOUNT_INDEX"
+      fetch_stats "$DISPLAY_NAME" "$USERNAME" "$HOSTNAME" "$OUTPUT_FILE" &
+
+      COUNTER=$((COUNTER + 1))
+      ACCOUNT_INDEX=$((ACCOUNT_INDEX + 1))
+
+      if [[ $COUNTER -eq 10 ]]; then
+        wait
+        COUNTER=0
       fi
-
-      CURRENT_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
-
-      PREVIOUS_COMMITS=$(gh api $GH_HOST_FLAG search/commits -X GET -f q="author:$USERNAME committer-date:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
-
-      CURRENT_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
-
-      PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
-
-      echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$PREVIOUS_COMMITS|$CURRENT_PRS|$PREVIOUS_PRS" >> $TMP_FILE
     done
   fi
 done
+
+wait
+
+TMP_FILE="/tmp/team-stats-output"
+echo "User|GitHub|CW-Commits|PW-Commits|CW-PRs|PW-PRs" > $TMP_FILE
+
+for i in $(seq 0 $((ACCOUNT_INDEX - 1)))
+do
+  if [[ -f "$TMP_DIR/result_$i" ]]; then
+    cat "$TMP_DIR/result_$i" >> $TMP_FILE
+  fi
+done
+
+rm -rf $TMP_DIR
 
 echo ""
 echo "Current week ($CURRENT_WEEK_START to $NOW)"
