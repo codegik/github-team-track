@@ -25,7 +25,7 @@ CURRENT_WEEK_START=$(date -v-6d +%Y-%m-%d)
 PREVIOUS_WEEK_END=$(date -v-7d +%Y-%m-%d)
 PREVIOUS_WEEK_START=$(date -v-13d +%Y-%m-%d)
 
-echo "User|GitHub|CW-Commits|CW-PRs|PW-Commits|PW-PRs" > $TMP_FILE
+echo "User|GitHub|CW-Commits|PW-Commits|CW-PRs|PW-PRs" > $TMP_FILE
 
 for USER_ENTRY in "${USERS[@]}"
 do
@@ -58,7 +58,7 @@ do
 
       PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
 
-      echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$CURRENT_PRS|$PREVIOUS_COMMITS|$PREVIOUS_PRS" >> $TMP_FILE
+      echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$PREVIOUS_COMMITS|$CURRENT_PRS|$PREVIOUS_PRS" >> $TMP_FILE
     done
   fi
 done
