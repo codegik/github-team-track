@@ -47,7 +47,14 @@ fetch_stats() {
 
   PREVIOUS_PRS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="author:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
 
-  echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_COMMITS|$PREVIOUS_COMMITS|$CURRENT_PRS|$PREVIOUS_PRS" > $OUTPUT_FILE
+  CURRENT_REVIEWS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="reviewed-by:$USERNAME type:pr created:$CURRENT_WEEK_START..$NOW" --jq '.total_count' 2>/dev/null || echo "0")
+
+  PREVIOUS_REVIEWS=$(gh api $GH_HOST_FLAG search/issues -X GET -f q="reviewed-by:$USERNAME type:pr created:$PREVIOUS_WEEK_START..$PREVIOUS_WEEK_END" --jq '.total_count' 2>/dev/null || echo "0")
+
+  CURRENT_TOTAL=$((CURRENT_COMMITS + CURRENT_PRS + CURRENT_REVIEWS))
+  PREVIOUS_TOTAL=$((PREVIOUS_COMMITS + PREVIOUS_PRS + PREVIOUS_REVIEWS))
+
+  echo "$DISPLAY_NAME|$GITHUB_TYPE|$CURRENT_TOTAL|$PREVIOUS_TOTAL" > $OUTPUT_FILE
 }
 
 COUNTER=0
